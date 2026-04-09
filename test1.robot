@@ -3,7 +3,7 @@ Library    RequestsLibrary
 Library    Collections
 
 *** Variables ***
-${BASE_URL}    http://127.0.0.1:8000
+${BASE_URL}    http://localhost:8000
 
 *** Test Cases ***
 atttach_to_ue
