@@ -3,21 +3,35 @@ Library    RequestsLibrary
 
 *** Variables ***
 ${BASE_URL}    http://localhost:8000
+${UE_ID}    50
+${KBPS_SPEED}    50
+${PROTOCOL}    tcp
+${BEARER_ID}    5
 
 *** Test Cases ***
 Incorrect bearer id test
-    Create Session    mysession    ${BASE_URL}
+    Given Symulator Jest Zresetowany I UE ${UE_ID} Podlaczone
+    When Proba Rozpoczecia Transmisji Dla UE ${UE_ID} Z Bearerem ${BEARER_ID}
+    Then Powinno Zwrocic Status 400
+    And Aplikacja Powinna Byc aktywna
 
-    ${response}=    POST On Session    mysession    /reset
-    Status Should Be    200    ${response}
+*** Keywords ***
+Symulator Jest Zresetowany I UE ${id} Podlaczone
+    [Documentation]    Ustawienie warunków początkowych: czysta sieć i jedno aktywne urządzenie 
+    Create Session    epc    ${BASE_URL}
+    POST On Session    epc    /reset    expected_status=any
+    ${body}=    Create Dictionary    ue_id=${id}
+    ${resp}=    POST On Session    epc    /ues    json=${body}    expected_status=any
+    Should Be True    ${resp.status_code} < 400
 
-    ${data}=    Create Dictionary    ue_id=50
-    ${response}=    POST On Session    mysession    /ues    json=${data}
-    Status Should Be    200    ${response}
+Proba Rozpoczecia Transmisji Dla UE ${ue_id} Z Bearerem ${bearer_id}
+    ${data}=    Create Dictionary    protocol=${PROTOCOL}    kbps=${KBPS_SPEED}
+    ${response}=    POST On Session    epc    /ues/${ue_id}/bearers/${bearer_id}/traffic    json=${data}    expected_status=any
+    Set Test Variable    ${LAST_RESPONSE}    ${response}
 
-    ${data}=    Create Dictionary    protocol=tcp    kbps=50
-    ${response}=    POST On Session    mysession    /ues/50/bearers/5/traffic    json=${data}    expected_status=any
-    Status Should Be    400    ${response}
-    
-    ${response}=    GET On Session    mysession    /
+Powinno Zwrocic Status ${status}
+    Status Should Be    400    ${LAST_RESPONSE}
+
+Aplikacja Powinna Byc Aktywna
+    ${response}=    GET On Session    epc    /
     Status Should Be    200    ${response}
