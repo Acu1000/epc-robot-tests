@@ -1,29 +1,41 @@
 *** Settings ***
-Documentation     Scenariusz 4: Próba przesyłania danych w kierunku UL.
+Documentation     Scenariusz 4: Weryfikacja blokady transferu w kierunku UL (tylko DL jest dozwolony).
 Library           RequestsLibrary
 Library           Collections
 
 *** Variables ***
 ${BASE_URL}       http://localhost:8000
+${UE_50}          50
+${UE_51}          51
 
 *** Test Cases ***
-Próba przesłania danych w kierunku UL
-    [Documentation]    Weryfikacja blokady transferu w kierunku UL (tylko DL jest dozwolony).
+Scenariusz 4 - Próba przesyłania danych w kierunku UL
+    [Documentation]    Test sprawdza, czy symulator poprawnie odrzuca próby 
+    ...                rozpoczęcia transferu danych w niedozwolonym kierunku Uplink.
     [Tags]    traffic    negative
+    
+    Given Symulator Jest Zresetowany I Urzadzenia O ID ${UE_50} Oraz ${UE_51} Sa Podlaczone
+    When Uzytkownik Probuje Uruchomic Transfer UL Dla Urzadzenia ${UE_50} Na Bearerze 9
+    Then Proba Przeslania Danych Powinna Zostac Odrzucona Przez Symulator
+
+
+*** Keywords ***
+Symulator Jest Zresetowany I Urzadzenia O ID ${id1} Oraz ${id2} Sa Podlaczone
+    [Documentation]    Resetuje symulator i podłącza dwa urządzenia testowe.
     Create Session    epc    ${BASE_URL}
-    POST On Session    epc    /reset
+    POST On Session    epc    /reset    expected_status=any
+    ${body1}=    Create Dictionary    ue_id=${id1}
+    ${body2}=    Create Dictionary    ue_id=${id2}
+    POST On Session    epc    /ues    json=${body1}    expected_status=any
+    POST On Session    epc    /ues    json=${body2}    expected_status=any
 
-    # Warunki początkowe: Podłączone UE 50 i 51 [cite: 919, 1286]
-    ${ue50}=    Create Dictionary    ue_id=${50}
-    ${ue51}=    Create Dictionary    ue_id=${51}
-    POST On Session    epc    /ues    json=${ue50}
-    POST On Session    epc    /ues    json=${ue51}
-
-    # Próba rozpoczęcia transferu UL
+Uzytkownik Probuje Uruchomic Transfer UL Dla Urzadzenia ${ue_id} Na Bearerze ${bearer_id}
+    [Documentation]    Wysyła żądanie startu ruchu z parametrem direction=UL.
     ${body}=    Create Dictionary    protocol=tcp    Mbps=10    direction=UL
-    ${response}=    POST On Session    epc    /ues/50/bearers/9/traffic    json=${body}    expected_status=any
+    ${response}=    POST On Session    epc    /ues/${ue_id}/bearers/${bearer_id}/traffic    json=${body}    expected_status=any
+    Set Test Variable    ${LAST_RESPONSE}    ${response}
 
-    # Oczekiwany rezultat wg planu: Próba zostanie powstrzymana [cite: 923, 1289]
-    # UWAGA: Twój symulator obecnie zwraca 200, co jest błędem P1 (brak walidacji).
-    # Zmieniamy test tak, aby pokazywał błąd, dopóki deweloperzy tego nie naprawią.
-    Should Be True    ${response.status_code} >= 400    msg=BŁĄD KRYTYCZNY: Symulator pozwolił na transfer UL mimo zakazu w dokumentacji!
+Proba Przeslania Danych Powinna Zostac Odrzucona Przez Symulator
+    [Documentation]    Weryfikacja, czy system zwrócił kod błędu.
+    Log    UWAGA: Według planu testów system powinien zwrócić błąd (>=400). Jeśli otrzymano 200, oznacza to błąd aplikacji (P1).    level=WARN
+    Should Be True    ${LAST_RESPONSE.status_code} >= 400    msg=BŁĄD KRYTYCZNY: Symulator pozwolił na transfer UL mimo zakazu w dokumentacji!
