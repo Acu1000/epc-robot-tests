@@ -1,18 +1,12 @@
 *** Settings ***
-Library    RequestsLibrary
-Library    Collections
-
-*** Variables ***
-${BASE_URL}    http://localhost:8000
+Resource    keywords_biznesowe.resource
 
 *** Test Cases ***
-atttach_to_ue
-    [Documentation]    Weryfikacja, czy system blokuje dodanie UE z ID wiekszym niz 100.
+Scenario 1: Próba dodania UE z ID większym niż dozwolone
+    [Documentation]    Cel: Weryfikacja, czy system blokuje dodanie urządzenia UE z ID większym niż 100.
     [Tags]    attach    negative    boundary
-    Create Session    epc    ${BASE_URL}
 
-    ${body}=    Create Dictionary    ue_id=101
-    ${response}=    POST On Session    epc    /ues    json=${body}    expected_status=any
-
-    Should Be Equal As Integers    ${response.status_code}    422
-    Should Contain    ${response.text}    less than or equal to 100
+    Given system jest gotowy
+    When próbuję dodać urządzenie UE o ID 101
+    Then system powinien odrzucić operację
+    And system powinien poinformować o przekroczeniu maksymalnego ID
