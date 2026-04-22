@@ -1,5 +1,5 @@
 *** Settings ***
-Documentation    Weryfikacja procedury odłączenia urządzenia (Detach) oraz czyszczenia zasobów systemowych.
+Documentation    Verification of the device detach procedure (Detach) and clearing of system resources.
 Library          RequestsLibrary
 
 *** Variables ***
@@ -7,33 +7,36 @@ ${BASE_URL}      http://localhost:8000
 ${UE_ID}         7
 
 *** Test Cases ***
-Scenariusz 3 - Odłączenie UE od sieci (Detach)
-    [Documentation]    Scenariusz sprawdza poprawne odłączenie urządzenia z sieci 
-    ...                oraz upewnia się, że jego zasoby nie są już dostępne.
+Scenario 3 - Detach UE from the network
+    [Documentation]    The scenario verifies the correct detachment of the device from the network 
+    ...                and ensures that its resources are no longer available.
     [Tags]    detach    positive
     
-    Given Symulator Jest Zresetowany I Urzadzenie O ID ${UE_ID} Jest Podlaczone
-    When Uzytkownik Odlacza Urzadzenie O ID ${UE_ID}
-    Then Urzadzenie O ID ${UE_ID} Nie Powinno Byc Dostepne W Sieci
+    Given Simulator Is Reset And Device With ID ${UE_ID} Is Connected
+    When User Detaches Device With ID ${UE_ID}
+    Then Device With ID ${UE_ID} Should Not Be Available In The Network
 
 
 *** Keywords ***
-Symulator Jest Zresetowany I Urzadzenie O ID ${id} Jest Podlaczone
-    [Documentation]    Resetuje środowisko testowe i przygotowuje aktywne urządzenie do testu.
+Simulator Is Reset And Device With ID ${id} Is Connected
+    [Documentation]    Resets the test environment and prepares an active device for the test.
     Create Session    epc    ${BASE_URL}
     POST On Session    epc    /reset    expected_status=any
     ${body}=    Create Dictionary    ue_id=${id}
     POST On Session    epc    /ues    json=${body}    expected_status=any
 
-Uzytkownik Odlacza Urzadzenie O ID ${id}
-    [Documentation]    Wywołuje procedurę Detach (usunięcie urządzenia z sieci).
+User Detaches Device With ID ${id}
+    [Documentation]    Calls the Detach procedure (removing the device from the network).
     ${response}=    DELETE On Session    epc    /ues/${id}    expected_status=any
-    # Weryfikacja czy żądanie usunięcia zostało przyjęte bez błędu serwera
+    # Verification if the delete request was accepted without a server error
     Should Be True    ${response.status_code} < 400
 
-Urzadzenie O ID ${id} Nie Powinno Byc Dostepne W Sieci
-    [Documentation]    Weryfikacja braku urządzenia w systemie po jego odłączeniu.
+Device With ID ${id} Should Not Be Available In The Network
+    [Documentation]    Verification of the lack of the device in the system after its detachment.
     ${check}=    GET On Session    epc    /ues/${id}    expected_status=any
     
-    # Rejestrujemy uwagę w logach raportu odnośnie specyficznego zachowania API
-    Log    UWAGA: Oczekiwany status błędu to 400 (Bad Request), ponieważ symulator nie używa standardowego 404 (Not Found) dla nieistniejących UE.    level=WARN
+    # We log a note in the report regarding the specific behavior of the API
+    Log    WARNING: The expected error status is 400 (Bad Request), because the simulator does not use the standard 404 (Not Found) for non-existent UEs.    level=WARN
+    
+    # Checking the code with a custom error description in case of possible future API fix
+    Should Be Equal As Integers    ${check.status_code}    400    msg=Simulator changed behavior! Check if it started returning the correct 404 code.
