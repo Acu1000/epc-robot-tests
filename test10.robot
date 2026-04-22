@@ -1,39 +1,61 @@
 *** Settings ***
 Library    RequestsLibrary
+Library    JSONLibrary
 
 *** Variables ***
 ${BASE_URL}    http://localhost:8000
 
 *** Test Cases ***
 Incorrect bearer id test
-    Create Session    mysession    ${BASE_URL}
 
-    ${response}=    POST On Session    mysession    /reset
+    Given System Jest Zresetowany
+    And Stworzono UE z ID 60
+    And Stworzono Bearer z ID 5 Dla UE 60
+    And Stworzono Bearer z ID 6 Dla UE 60
+    And Rozpoczeto Nadawanie z UE 60 z Bearerem 5
+    And Rozpoczeto Nadawanie z UE 60 z Bearerem 6
+
+    # Powinno byc zastapiane zatrzymaniem bez podania id bearera (zatrzymanie wszystkich)
+    # ale wyglada na to ze nie ma endpointa do takiego inputu
+    When Zatrzymano Nadawanie z UE 60 z Bearerem 5
+    And Zatrzymano Nadawanie z UE 60 z Bearerem 6
+
+    Then Nie Ma Ruchu z UE 60 z Bearerem 5
+
+*** Keywords ***
+System Jest Zresetowany
+    Create Session    epc    ${BASE_URL}
+    ${response}=    POST On Session    epc    /reset
     Status Should Be    200    ${response}
 
-    ${data}=    Create Dictionary    ue_id=60
-    ${response}=    POST On Session    mysession    /ues    json=${data}
+Stworzono UE z ID ${ue_id}
+    ${data}=    Create Dictionary    ue_id=${ue_id}
+    ${response}=    POST On Session    epc    /ues    json=${data}
     Status Should Be    200    ${response}
 
-    ${data}=    Create Dictionary    bearer_id=5
-    ${response}=    POST On Session    mysession    /ues/60/bearers    json=${data}
+Stworzono Bearer z ID ${bear_id} Dla UE ${ue_id}
+    ${data}=    Create Dictionary    bearer_id=${bear_id}
+    ${response}=    POST On Session    epc    /ues/${ue_id}/bearers    json=${data}
     Status Should Be    200    ${response}
 
-    ${data}=    Create Dictionary    bearer_id=6
-    ${response}=    POST On Session    mysession    /ues/60/bearers    json=${data}
-    Status Should Be    200    ${response}
-
+Rozpoczeto Nadawanie z UE ${ue_id} z Bearerem ${bear_id}
     ${data}=    Create Dictionary    protocol=tcp    kbps=50
-    ${response}=    POST On Session    mysession    /ues/60/bearers/5/traffic    json=${data}
+    ${response}=    POST On Session    epc    /ues/${ue_id}/bearers/${bear_id}/traffic    json=${data}
     Status Should Be    200    ${response}
 
-    ${data}=    Create Dictionary    protocol=tcp    kbps=50
-    ${response}=    POST On Session    mysession    /ues/60/bearers/6/traffic    json=${data}
+Zatrzymano Nadawanie z UE ${ue_id} z Bearerem ${bear_id}
+    ${response}=    DELETE On Session    epc    /ues/${ue_id}/bearers/${bear_id}/traffic
     Status Should Be    200    ${response}
 
-    # Supposed to not put bearer id here but it seems impossible without it currently?
-    ${response}=    DELETE On Session    mysession    /ues/60/bearers/5/traffic    json=${data}
+Nie Ma Ruchu z UE ${ue_id} z Bearerem ${bear_id}
+    ${response}=    GET On Session    epc    /ues/${ue_id}/bearers/${bear_id}/traffic
     Status Should Be    200    ${response}
+    ${values}=    Get Value From Json    ${response.json()}    $.protocol
 
-    ${response}=    GET On Session    mysession    /
-    Status Should Be    200    ${response}
+    ${is_empty}=    Run Keyword And Return Status
+    ...    Should Be Empty    ${values}
+
+    ${is_null}=    Run Keyword And Return Status
+    ...    Should Be Equal    ${values}[0]    ${None}
+
+    Should Be True    ${is_empty} or ${is_null}
