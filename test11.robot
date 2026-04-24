@@ -11,7 +11,7 @@ ${TOO_HIGH_MBPS}     1000
 ${EXPECTED_ERR}      less than or equal to 100
 
 *** Test Cases ***
-Scenario 6: Attempt to start data transfer exceeding maximum throughput
+Scenario 11: Attempt to start data transfer exceeding maximum throughput
     [Documentation]    Goal: Verification whether the system prevents starting traffic above the allowed throughput limit.
     [Tags]             traffic    negative
 
