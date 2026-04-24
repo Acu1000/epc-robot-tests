@@ -11,7 +11,7 @@ ${INVALID_PROTOCOL}  udp123
 ${EXPECTED_ERR}      protocol
 
 *** Test Cases ***
-Scenario 21: Attempt to start data transfer with invalid protocol
+Scenario 18: Attempt to start data transfer with invalid protocol
     [Documentation]    Goal: Verification whether the system prevents starting traffic with invalid protocol value.
     [Tags]             traffic    negative
 
