@@ -1,6 +1,6 @@
 *** Settings ***
-Documentation     Weryfikacja blokady usuwania domyślnego kanału transportowego (ID 9)
-...               Scenariusz sprawdza odporność systemu na próby usunięcia fundamentu połączenia.
+Documentation     Verification of the blockage against deleting the default transport channel (ID 9)
+...               The scenario checks the system's resilience to attempts to remove the connection foundation.
 Library           RequestsLibrary
 Library           Collections
 
@@ -11,42 +11,42 @@ ${DEFAULT_BEARER}  9
 ${EXPECTED_ERR}   Cannot remove default bearer
 
 *** Test Cases ***
-Scenario 7: Proba usuniecia domyslnego bearera o ID 9
-    [Documentation]    Cel: Weryfikacja, czy system zgodnie ze specyfikacją uniemożliwia usunięcie
-    ...                obowiązkowego kanału o numerze ID 9.
+Scenario 7: Attempt to remove default bearer with ID 9
+    [Documentation]    Goal: Verification whether the system, according to the specification, prevents the deletion
+    ...                of the mandatory channel with ID 9.
     [Tags]             bearer    negative
     
-    Given Symulator Jest Zresetowany I UE ${UE_ID} Podlaczone
-    When Uzytkownik Probuje Usunac Domyslny Bearer ${DEFAULT_BEARER} Dla UE ${UE_ID}
-    Then System Powinien Zablokowac Operacje Komunikatem    ${EXPECTED_ERR}
-    And Urzadzenie ${UE_ID} Powinno Nadal Istniec W Systemie
+    Given Simulator Is Reset And UE ${UE_ID} Is Connected
+    When User Attempts To Remove Default Bearer ${DEFAULT_BEARER} For UE ${UE_ID}
+    Then System Should Block The Operation With Message    ${EXPECTED_ERR}
+    And Device ${UE_ID} Should Still Exist In The System
 
 
 *** Keywords ***
-Symulator Jest Zresetowany I UE ${id} Podlaczone
-    [Documentation]    Ustawienie warunków początkowych: czysta sieć i jedno aktywne urządzenie.
+Simulator Is Reset And UE ${id} Is Connected
+    [Documentation]    Setting initial conditions: a clean network and one active device.
     Create Session    epc    ${BASE_URL}
     POST On Session    epc    /reset    expected_status=any
     ${body}=    Create Dictionary    ue_id=${id}
     ${resp}=    POST On Session    epc    /ues    json=${body}    expected_status=any
     Should Be True    ${resp.status_code} < 400
 
-Uzytkownik Probuje Usunac Domyslny Bearer ${bearer_id} Dla UE ${id}
-    [Documentation]    Wywołanie procedury usunięcia kanału (bearer deletion).
+User Attempts To Remove Default Bearer ${bearer_id} For UE ${id}
+    [Documentation]    Calling the channel deletion procedure (bearer deletion).
     ${response}=    DELETE On Session    epc    /ues/${id}/bearers/${bearer_id}    expected_status=any
     Set Test Variable    ${LAST_RESPONSE}    ${response}
 
-System Powinien Zablokowac Operacje Komunikatem
+System Should Block The Operation With Message
     [Arguments]    ${msg}
-    [Documentation]    Weryfikacja, czy system odrzucił żądanie i wyświetlił poprawny komunikat.
-    # Sprawdzamy kod błędu (>= 400)
+    [Documentation]    Verification whether the system rejected the request and displayed the correct message.
+    # We check the error code (>= 400)
     Should Be True    ${LAST_RESPONSE.status_code} >= 400
-    # Weryfikujemy treść błędu (zgodnie z logami symulatora)
+    # We verify the error content (according to the simulator logs)
     Should Contain    ${LAST_RESPONSE.text}    ${msg}
-    Log    Status błędu i komunikat są poprawne.    level=INFO
+    Log    The error status and message are correct.    level=INFO
 
-Urzadzenie ${id} Powinno Nadal Istniec W Systemie
-    [Documentation]    Ostateczne potwierdzenie, że zasób nie został usunięty.
-    # Używamy GET na adresie urządzenia, co jest najbardziej stabilnym endpointem w API.
+Device ${id} Should Still Exist In The System
+    [Documentation]    Final confirmation that the resource was not deleted.
+    # We use GET on the device address, which is the most stable endpoint in the API.
     GET On Session    epc    /ues/${id}    expected_status=200
-    Log    Sukces: Urządzenie i jego domyślne zasoby pozostały nienaruszone.
+    Log    Success: The device and its default resources remained intact.
