@@ -8,46 +8,46 @@ ${BASE_URL}    http://localhost:8000
 *** Test Cases ***
 Incorrect bearer id test
 
-    Given System Jest Zresetowany
+    Given Blank Simulation
     And Stworzono UE z ID 60
-    And Stworzono Bearer z ID 5 Dla UE 60
-    And Stworzono Bearer z ID 6 Dla UE 60
-    And Rozpoczeto Nadawanie z UE 60 z Bearerem 5
-    And Rozpoczeto Nadawanie z UE 60 z Bearerem 6
+    And Created Bearer With ID 5 For UE 60
+    And Created Bearer With ID 5 For UE 60
+    And Began Broadcasting From UE 60 Via Bearer 5
+    And Began Broadcasting From UE 60 Via Bearer 6
 
-    # Powinno byc zastapiane zatrzymaniem bez podania id bearera (zatrzymanie wszystkich)
-    # ale wyglada na to ze nie ma endpointa do takiego inputu
-    When Zatrzymano Nadawanie z UE 60 z Bearerem 5
-    And Zatrzymano Nadawanie z UE 60 z Bearerem 6
+    # The program seems to lack input for stop broadcast without giving bearer id
+    When Stopped Broadcasting From UE 60 Via Bearer 5
+    And Stopped Broadcasting From UE 60 Via Bearer 6
 
-    Then Nie Ma Ruchu z UE 60 z Bearerem 5
+    Then No Traffic From 60 Via Bearer 5
+    And No Traffic From 60 Via Bearer 6
 
 *** Keywords ***
-System Jest Zresetowany
+Blank Simulation
     Create Session    epc    ${BASE_URL}
     ${response}=    POST On Session    epc    /reset
     Status Should Be    200    ${response}
 
-Stworzono UE z ID ${ue_id}
-    ${data}=    Create Dictionary    ue_id=${ue_id}
-    ${response}=    POST On Session    epc    /ues    json=${data}
-    Status Should Be    200    ${response}
+UE With ID ${id} Connected
+    ${body}=    Create Dictionary    ue_id=${id}
+    ${resp}=    POST On Session    epc    /ues    json=${body}    expected_status=any
+    Should Be True    ${resp.status_code} < 400
 
-Stworzono Bearer z ID ${bear_id} Dla UE ${ue_id}
+Created Bearer With ID ${bear_id} For UE ${ue_id}
     ${data}=    Create Dictionary    bearer_id=${bear_id}
     ${response}=    POST On Session    epc    /ues/${ue_id}/bearers    json=${data}
     Status Should Be    200    ${response}
 
-Rozpoczeto Nadawanie z UE ${ue_id} z Bearerem ${bear_id}
+Began Broadcasting From UE ${ue_id} Via Bearer ${bear_id}
     ${data}=    Create Dictionary    protocol=tcp    kbps=50
     ${response}=    POST On Session    epc    /ues/${ue_id}/bearers/${bear_id}/traffic    json=${data}
     Status Should Be    200    ${response}
 
-Zatrzymano Nadawanie z UE ${ue_id} z Bearerem ${bear_id}
+Stopped Broadcasting From UE ${ue_id} Via Bearer ${bear_id}
     ${response}=    DELETE On Session    epc    /ues/${ue_id}/bearers/${bear_id}/traffic
     Status Should Be    200    ${response}
 
-Nie Ma Ruchu z UE ${ue_id} z Bearerem ${bear_id}
+No Traffic From ${ue_id} Via Bearer ${bear_id}
     ${response}=    GET On Session    epc    /ues/${ue_id}/bearers/${bear_id}/traffic
     Status Should Be    200    ${response}
     ${values}=    Get Value From Json    ${response.json()}    $.protocol

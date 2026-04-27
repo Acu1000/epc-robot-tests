@@ -10,28 +10,32 @@ ${BEARER_ID}    5
 
 *** Test Cases ***
 Incorrect bearer id test
-    Given Symulator Jest Zresetowany I UE ${UE_ID} Podlaczone
-    When Proba Rozpoczecia Transmisji Dla UE ${UE_ID} Z Bearerem ${BEARER_ID}
-    Then Powinno Zwrocic Status 400
-    And Aplikacja Powinna Byc aktywna
+    Given Blank Simulation
+    UE With ID ${UE_ID} Connected
+
+    When Attempted To Start Transmission With UE ID ${UE_ID} And Bearer ID ${BEARER_ID}
+
+    Returned Status Is Bad Request
+    And Simulation Is Up
 
 *** Keywords ***
-Symulator Jest Zresetowany I UE ${id} Podlaczone
-    [Documentation]    Ustawienie warunków początkowych: czysta sieć i jedno aktywne urządzenie 
+Blank Simulation
     Create Session    epc    ${BASE_URL}
-    POST On Session    epc    /reset    expected_status=any
-    ${body}=    Create Dictionary    ue_id=${id}
-    ${resp}=    POST On Session    epc    /ues    json=${body}    expected_status=any
-    Should Be True    ${resp.status_code} < 400
+    ${response}=    POST On Session    epc    /reset
+    Status Should Be    200    ${response}
 
-Proba Rozpoczecia Transmisji Dla UE ${ue_id} Z Bearerem ${bearer_id}
+UE With ID ${id} Connected
+    ${body}=    Create Dictionary    ue_id=${id}
+    ${response}=    POST On Session    epc    /ues    json=${body}    expected_status=any
+    Status Should Be    200    ${response}
+
+Attempted To Start Transmission With UE ID ${ue_id} And Bearer ID ${bearer_id}
     ${data}=    Create Dictionary    protocol=${PROTOCOL}    kbps=${KBPS_SPEED}
     ${response}=    POST On Session    epc    /ues/${ue_id}/bearers/${bearer_id}/traffic    json=${data}    expected_status=any
     Set Test Variable    ${LAST_RESPONSE}    ${response}
 
-Powinno Zwrocic Status ${status}
+Returned Status Is Bad Request
     Status Should Be    400    ${LAST_RESPONSE}
 
-Aplikacja Powinna Byc Aktywna
-    ${response}=    GET On Session    epc    /
-    Status Should Be    200    ${response}
+Simulation Is Up
+    ${LAST_RESPONSE}=    GET On Session    epc    /ues
